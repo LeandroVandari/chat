@@ -1,0 +1,8 @@
+[package]
+name = "comunicacao"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+interfaces = "0.0.9"
+local-ip-address = "0.6.2"
