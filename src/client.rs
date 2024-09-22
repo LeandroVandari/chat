@@ -1,6 +1,6 @@
 use comunicacao::utilities;
-use std::io::prelude::*;
-use std::net::TcpStream;
+use std::io::{prelude::*, BufReader};
+use std::net::{TcpStream, TcpListener};
 use std::sync::mpsc;
 use std::thread;
 
@@ -10,13 +10,30 @@ pub fn run() {
         .trim()
         .to_string();
     ip_servidor.push_str(":7878");
-
+    let listener_receber_mensagens = TcpListener::bind("0.0.0.0:7878").expect("Não consigo receber mensagens do servidor");
     let mut conexao_servidor =
         TcpStream::connect(ip_servidor).expect("Não foi possível conectar ao servidor");
     conexao_servidor
         .write_all(meu_nome.as_bytes())
         .expect("Não foi possível enviar o nome de usuário ao servidor");
     conexao_servidor.set_nonblocking(true).expect("Não sei");
+    
+    let (conexao_receber, _) = listener_receber_mensagens.accept().unwrap();
+    let (mensagem_tx, receber_mensagem) = mpsc::channel();
+    let _receber_mensagens = thread::spawn(move || {
+        loop {
+            let mut read_buffer = String::new();
+            let mut buf_reader = BufReader::new(&conexao_receber);
+            buf_reader
+                .read_line(&mut read_buffer)
+                .expect("Primeira mensagem deve ser o nome do usuário");
+            mensagem_tx
+                .send(read_buffer.clone())
+                .expect("Comunicacao entre threads nao funciona");
+            read_buffer.clear();
+            }
+    });
+
     println!("Conectado com sucesso!\n");
 
     let (tx, rec_msg) = mpsc::channel();
@@ -30,7 +47,6 @@ pub fn run() {
         }
     });
 
-    let mut receive_buffer = String::new();
     loop {
         while let Ok(msg) = rec_msg.try_recv() {
             conexao_servidor
@@ -38,14 +54,9 @@ pub fn run() {
                 .expect("Não consegui mandar sua mensagem");
         }
 
-        let mensagem = conexao_servidor.read_to_string(&mut receive_buffer);
-
-        if let Ok(tamanho) = mensagem {
-            if tamanho >= 1 {
-                println!("{receive_buffer}");
-            }
+        while let Ok(msg) = receber_mensagem.try_recv() {
+            println!("{msg}");
         }
 
-        receive_buffer.clear();
     }
 }
