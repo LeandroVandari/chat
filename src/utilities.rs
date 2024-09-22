@@ -1,4 +1,4 @@
-use std::io::{stdin, stdout, prelude::*};
+use std::io::{prelude::*, stdin, stdout};
 use std::net::{TcpStream, ToSocketAddrs};
 
 pub fn input(mensagem: &str) -> String {
