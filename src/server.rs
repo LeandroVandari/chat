@@ -4,7 +4,6 @@ use std::{
     collections::VecDeque,
     io::{prelude::*, BufRead, BufReader},
     net::{TcpListener, TcpStream},
-    panic::resume_unwind,
     thread,
 };
 
@@ -38,19 +37,21 @@ pub fn run() {
 
             let (mensagem_tx, receber_mensagem) = std::sync::mpsc::channel();
             let pessoa = client.pessoa.clone();
-            let _receber_mensagens_do_cliente = thread::spawn(move || loop {
+            let _receber_mensagens_do_cliente = thread::spawn(move || {
                 let mut read_buffer = String::new();
                 let mut buf_reader = BufReader::new(&client.conexao);
-                buf_reader
-                    .read_line(&mut read_buffer)
-                    .expect("Primeira mensagem deve ser o nome do usuário");
-                mensagem_tx
-                    .send(Message::new(
-                        pessoa.clone(),
-                        TipoMensagem::Chat(read_buffer.clone()),
-                    ))
-                    .expect("Comunicacao entre threads nao funciona");
-                read_buffer.clear();
+                loop {
+                    buf_reader
+                        .read_line(&mut read_buffer)
+                        .expect("alguma mensagem");
+                    mensagem_tx
+                        .send(Message::new(
+                            pessoa.clone(),
+                            TipoMensagem::Chat(read_buffer.clone()),
+                        ))
+                        .expect("Comunicacao entre threads nao funciona");
+                    read_buffer.clear();
+                }
             });
 
             tx.send((receber_mensagem, conexao_enviar, client.pessoa))
@@ -71,6 +72,7 @@ pub fn run() {
 
         for cliente in &mut conexoes_receber {
             if let Ok(msg) = cliente.try_recv() {
+                dbg!(&msg);
                 mensagens.push_back(msg);
             }
         }
@@ -81,6 +83,7 @@ pub fn run() {
             let msg_bytes = msg_string.as_bytes();
             for conexao in &mut conexoes_enviar {
                 if msg.autor.id != conexao.1 {
+                    println!("OOPS");
                     conexao
                         .0
                         .write_all(msg_bytes)
@@ -91,7 +94,7 @@ pub fn run() {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Pessoa {
     nome: String,
     id: u32, //cor: (u8, u8, u8)
@@ -116,10 +119,13 @@ impl Client {
     }
 }
 
+#[derive(Debug)]
 struct Message {
     autor: Pessoa,
     tipo: TipoMensagem,
 }
+
+#[derive(Debug)]
 enum TipoMensagem {
     Entrada,
     Saida,
