@@ -22,11 +22,9 @@ pub fn run() {
         .read_exact(&mut buffer)
         .expect("Servidor não mandou número da porta a conectar");
     let port = u16::from_be_bytes(buffer);
-    println!("{port}");
     let mut port_str = port.to_string();
     port_str.insert_str(0, ":");
     ip_sem_porta.push_str(&port_str);
-    println!("{ip_sem_porta}");
     let conexao_receber = TcpStream::connect(ip_sem_porta).unwrap();
     conexao_servidor
         .set_nodelay(true)
