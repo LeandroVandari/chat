@@ -53,7 +53,7 @@ pub fn run() {
                         mensagem_tx
                             .send(Message::new(pessoa.clone(), TipoMensagem::Saida))
                             .expect("Comunicacao entre threads nao funciona");
-                        return;
+                        break;
                     }
                     mensagem_tx
                         .send(Message::new(
@@ -81,16 +81,17 @@ pub fn run() {
             conexoes_enviar.push((client, pessoa.id));
         }
 
-        conexoes_receber.retain(|cliente| {
+        conexoes_receber = conexoes_receber.into_iter().enumerate().filter(|(idx, cliente)| {
             if let Ok(msg) = cliente.try_recv() {
-                if let TipoMensagem::Saida = msg.tipo {
+                let tipo = msg.tipo.clone();
+                mensagens.push_back(msg);
+                if let TipoMensagem::Saida = tipo {
+                    conexoes_enviar.remove(*idx);
                     return false;
                 }
-                mensagens.push_back(msg);
-                return true;
             }
-            return false;
-        });
+            return true;
+        }).map(|(_, cliente)| cliente).collect();
 
         while let Some(msg) = mensagens.pop_front() {
             println!("{msg}");
@@ -139,7 +140,7 @@ struct Message {
     pub tipo: TipoMensagem,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum TipoMensagem {
     Entrada,
     Saida,
