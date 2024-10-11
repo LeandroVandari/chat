@@ -9,18 +9,22 @@ pub fn run() {
     let mut ip_servidor = utilities::input("IP da sala a conectar: ")
         .trim()
         .to_string();
+    let mut ip_sem_porta = ip_servidor.clone();
     ip_servidor.push_str(":7878");
-    let listener_receber_mensagens =
-        TcpListener::bind("0.0.0.0:7878").expect("Não consigo receber mensagens do servidor");
     let mut conexao_servidor =
         TcpStream::connect(ip_servidor).expect("Não foi possível conectar ao servidor");
+
     conexao_servidor
         .write_all(meu_nome.as_bytes())
         .expect("Não foi possível enviar o nome de usuário ao servidor");
+    let mut buffer:[u8;2] = [0;2];
+    conexao_servidor.read_exact(&mut buffer);
+    let port= u16::from_be_bytes(buffer);
+    ip_sem_porta.push_str(port.to_string().as_str());
+    let conexao_receber = TcpStream::connect(ip_sem_porta).unwrap();
     conexao_servidor.set_nodelay(true).expect("Esse era o problema :)");
     conexao_servidor.set_nonblocking(true).expect("Não sei");
 
-    let (conexao_receber, _) = listener_receber_mensagens.accept().unwrap();
     let (mensagem_tx, receber_mensagem) = mpsc::channel();
     let _receber_mensagens = thread::spawn(move || loop {
         let mut read_buffer = String::new();

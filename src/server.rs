@@ -28,10 +28,11 @@ pub fn run() {
                 .read_line(&mut read_buffer)
                 .expect("Primeira mensagem deve ser o nome do usuário");
             let nome_outro = read_buffer.trim().to_string();
+            let mut enviar_mensagens = TcpListener::bind("0.0.0.0:0").unwrap();
+            let port_enviar = enviar_mensagens.local_addr().unwrap().port().to_be_bytes();
+            stream.write_all(&port_enviar).expect("Não consegui enviar conexao para enviar mensagens");
 
-            let mut client_addr = stream.peer_addr().unwrap();
-            client_addr.set_port(7878);
-            let conexao_enviar = TcpStream::connect(client_addr).unwrap();
+            let (conexao_enviar, addr) = enviar_mensagens.accept().unwrap();
 
             let client = Client::new(nome_outro, stream);
 
