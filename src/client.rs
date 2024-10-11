@@ -1,6 +1,6 @@
 use comunicacao::utilities;
 use std::io::{prelude::*, BufReader};
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpStream;
 use std::sync::mpsc;
 use std::thread;
 
@@ -18,9 +18,13 @@ pub fn run() {
         .write_all(meu_nome.as_bytes())
         .expect("Não foi possível enviar o nome de usuário ao servidor");
     let mut buffer:[u8;2] = [0;2];
-    conexao_servidor.read_exact(&mut buffer);
+    conexao_servidor.read_exact(&mut buffer).expect("Servidor não mandou número da porta a conectar");
     let port= u16::from_be_bytes(buffer);
-    ip_sem_porta.push_str(port.to_string().as_str());
+    println!("{port}");
+    let mut port_str = port.to_string();
+    port_str.insert_str(0, ":");
+    ip_sem_porta.push_str(&port_str);
+    println!("{ip_sem_porta}");
     let conexao_receber = TcpStream::connect(ip_sem_porta).unwrap();
     conexao_servidor.set_nodelay(true).expect("Esse era o problema :)");
     conexao_servidor.set_nonblocking(true).expect("Não sei");
@@ -38,6 +42,7 @@ pub fn run() {
         read_buffer.clear();
     });
 
+
     println!("Conectado com sucesso!\n");
 
     let (tx, rec_msg) = mpsc::channel();
@@ -54,7 +59,7 @@ pub fn run() {
     loop {
         while let Ok(msg) = rec_msg.try_recv() {
             conexao_servidor
-                .write_all(format!("{meu_nome}: {}", msg).as_bytes())
+                .write_all(format!("{}", msg).as_bytes())
                 .expect("Não consegui mandar sua mensagem");
         }
 

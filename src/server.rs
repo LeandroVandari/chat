@@ -3,9 +3,10 @@ use local_ip_address::local_ip;
 use std::{
     collections::VecDeque,
     io::{prelude::*, BufRead, BufReader},
-    net::{TcpListener, TcpStream},
+    net::TcpListener,
     thread,
 };
+use colored::Colorize;
 
 static mut MAX_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
@@ -28,11 +29,11 @@ pub fn run() {
                 .read_line(&mut read_buffer)
                 .expect("Primeira mensagem deve ser o nome do usuário");
             let nome_outro = read_buffer.trim().to_string();
-            let mut enviar_mensagens = TcpListener::bind("0.0.0.0:0").unwrap();
-            let port_enviar = enviar_mensagens.local_addr().unwrap().port().to_be_bytes();
-            stream.write_all(&port_enviar).expect("Não consegui enviar conexao para enviar mensagens");
+            let enviar_mensagens = TcpListener::bind("0.0.0.0:0").unwrap();
+            let port_bytes = enviar_mensagens.local_addr().unwrap().port().to_be_bytes();
+            stream.write_all(&port_bytes).expect("Não consegui enviar conexao para enviar mensagens");
 
-            let (conexao_enviar, addr) = enviar_mensagens.accept().unwrap();
+            let (conexao_enviar, _addr) = enviar_mensagens.accept().unwrap();
 
             let client = Client::new(nome_outro, stream);
 
@@ -42,9 +43,14 @@ pub fn run() {
                 let mut read_buffer = String::new();
                 let mut buf_reader = BufReader::new(&client.conexao);
                 loop {
-                    buf_reader
+                    let amount = buf_reader
                         .read_line(&mut read_buffer)
                         .expect("alguma mensagem");
+
+                    if amount == 0 {
+                        mensagem_tx.send(Message::new(pessoa.clone(), TipoMensagem::Saida)).expect("Comunicacao entre threads nao funciona");
+                        return;
+                    }
                     mensagem_tx
                         .send(Message::new(
                             pessoa.clone(),
@@ -71,12 +77,14 @@ pub fn run() {
             conexoes_enviar.push((client, pessoa.id));
         }
 
-        for cliente in &mut conexoes_receber {
-            if let Ok(msg) = cliente.try_recv() {
-                dbg!(&msg);
-                mensagens.push_back(msg);
+        conexoes_receber.retain(|cliente| {if let Ok(msg) = cliente.try_recv() {
+            if let TipoMensagem::Saida = msg.tipo {
+                return false;
             }
+            mensagens.push_back(msg);
+            return true;
         }
+    return false;});
 
         while let Some(msg) = mensagens.pop_front() {
             println!("{msg}");
@@ -84,7 +92,6 @@ pub fn run() {
             let msg_bytes = msg_string.as_bytes();
             for conexao in &mut conexoes_enviar {
                 if msg.autor.id != conexao.1 {
-                    println!("OOPS");
                     conexao
                         .0
                         .write_all(msg_bytes)
@@ -123,7 +130,7 @@ impl Client {
 #[derive(Debug)]
 struct Message {
     autor: Pessoa,
-    tipo: TipoMensagem,
+    pub tipo: TipoMensagem,
 }
 
 #[derive(Debug)]
@@ -148,9 +155,9 @@ impl std::fmt::Display for Client {
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let texto = match &self.tipo {
-            TipoMensagem::Entrada => format!("{} entrou no chat!...", self.autor.nome),
-            TipoMensagem::Saida => format!("{} saiu do chat...", self.autor.nome),
-            TipoMensagem::Chat(texto) => format!("{}: {texto}", self.autor.nome),
+            TipoMensagem::Entrada => format!("{} entrou no chat!...", self.autor.nome).bright_blue(),
+            TipoMensagem::Saida => format!("{} saiu do chat...", self.autor.nome).red(),
+            TipoMensagem::Chat(texto) => format!("{}: {}", self.autor.nome, texto.trim_end()).white(),
         };
         write!(f, "{texto}")
     }
