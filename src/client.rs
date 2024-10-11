@@ -1,8 +1,11 @@
+use colored::Colorize;
 use comunicacao::utilities;
 use std::io::{prelude::*, BufReader};
 use std::net::TcpStream;
-use std::sync::mpsc;
+use std::sync::{atomic, mpsc};
 use std::thread;
+
+static mut SERVER_EXITED: atomic::AtomicBool = atomic::AtomicBool::new(false);
 
 pub fn run() {
     let meu_nome = utilities::input("Seu nome de usuário: ");
@@ -35,9 +38,13 @@ pub fn run() {
     let _receber_mensagens = thread::spawn(move || loop {
         let mut read_buffer = String::new();
         let mut buf_reader = BufReader::new(&conexao_receber);
-        buf_reader
+        let amount = buf_reader
             .read_line(&mut read_buffer)
             .expect("Primeira mensagem deve ser o nome do usuário");
+        if amount == 0 {
+            unsafe{SERVER_EXITED.store(true, std::sync::atomic::Ordering::Relaxed)};
+            return;
+        }
         mensagem_tx
             .send(read_buffer.clone())
             .expect("Comunicacao entre threads nao funciona");
@@ -58,6 +65,10 @@ pub fn run() {
     });
 
     loop {
+        if *unsafe {SERVER_EXITED.get_mut()} == true {
+            println!("{}", "Server disconnected! Exiting...".red());
+            break;
+        }
         while let Ok(msg) = rec_msg.try_recv() {
             conexao_servidor
                 .write_all(format!("{}", msg).as_bytes())
