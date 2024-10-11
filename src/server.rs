@@ -112,13 +112,14 @@ pub fn run() {
 #[derive(Clone, Debug)]
 struct Pessoa {
     nome: String,
-    id: u32, //cor: (u8, u8, u8)
+    id: u32,
+    cor: (u8, u8, u8)
 }
 
 impl Pessoa {
     fn new(nome: String) -> Self {
         let id = unsafe { MAX_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed) };
-        Self { nome, id }
+        Self { nome, id, cor: (rand::random::<u8>(), rand::random::<u8>(), rand::random::<u8>()) }
     }
 }
 
@@ -161,13 +162,14 @@ impl std::fmt::Display for Client {
 
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (r, g, b) =  self.autor.cor;
         let texto = match &self.tipo {
             TipoMensagem::Entrada => {
-                format!("{} entrou no chat!...", self.autor.nome).bright_blue()
+                format!("{} entrou no chat!...", self.autor.nome.truecolor(r, g, b)).bright_blue()
             }
-            TipoMensagem::Saida => format!("{} saiu do chat...", self.autor.nome).red(),
+            TipoMensagem::Saida => format!("{} saiu do chat...", self.autor.nome.truecolor(r, g, b)).red(),
             TipoMensagem::Chat(texto) => {
-                format!("{}: {}", self.autor.nome, texto.trim_end()).white()
+                format!("{}: {}", self.autor.nome.truecolor(r, g, b), texto.trim_end()).white()
             }
         };
         write!(f, "{texto}")
