@@ -1,3 +1,4 @@
+use colored::Colorize;
 use comunicacao::utilities;
 use local_ip_address::local_ip;
 use std::{
@@ -6,7 +7,6 @@ use std::{
     net::TcpListener,
     thread,
 };
-use colored::Colorize;
 
 static mut MAX_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
@@ -31,7 +31,9 @@ pub fn run() {
             let nome_outro = read_buffer.trim().to_string();
             let enviar_mensagens = TcpListener::bind("0.0.0.0:0").unwrap();
             let port_bytes = enviar_mensagens.local_addr().unwrap().port().to_be_bytes();
-            stream.write_all(&port_bytes).expect("Não consegui enviar conexao para enviar mensagens");
+            stream
+                .write_all(&port_bytes)
+                .expect("Não consegui enviar conexao para enviar mensagens");
 
             let (conexao_enviar, _addr) = enviar_mensagens.accept().unwrap();
 
@@ -48,7 +50,9 @@ pub fn run() {
                         .expect("alguma mensagem");
 
                     if amount == 0 {
-                        mensagem_tx.send(Message::new(pessoa.clone(), TipoMensagem::Saida)).expect("Comunicacao entre threads nao funciona");
+                        mensagem_tx
+                            .send(Message::new(pessoa.clone(), TipoMensagem::Saida))
+                            .expect("Comunicacao entre threads nao funciona");
                         return;
                     }
                     mensagem_tx
@@ -77,14 +81,16 @@ pub fn run() {
             conexoes_enviar.push((client, pessoa.id));
         }
 
-        conexoes_receber.retain(|cliente| {if let Ok(msg) = cliente.try_recv() {
-            if let TipoMensagem::Saida = msg.tipo {
-                return false;
+        conexoes_receber.retain(|cliente| {
+            if let Ok(msg) = cliente.try_recv() {
+                if let TipoMensagem::Saida = msg.tipo {
+                    return false;
+                }
+                mensagens.push_back(msg);
+                return true;
             }
-            mensagens.push_back(msg);
-            return true;
-        }
-    return false;});
+            return false;
+        });
 
         while let Some(msg) = mensagens.pop_front() {
             println!("{msg}");
@@ -155,9 +161,13 @@ impl std::fmt::Display for Client {
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let texto = match &self.tipo {
-            TipoMensagem::Entrada => format!("{} entrou no chat!...", self.autor.nome).bright_blue(),
+            TipoMensagem::Entrada => {
+                format!("{} entrou no chat!...", self.autor.nome).bright_blue()
+            }
             TipoMensagem::Saida => format!("{} saiu do chat...", self.autor.nome).red(),
-            TipoMensagem::Chat(texto) => format!("{}: {}", self.autor.nome, texto.trim_end()).white(),
+            TipoMensagem::Chat(texto) => {
+                format!("{}: {}", self.autor.nome, texto.trim_end()).white()
+            }
         };
         write!(f, "{texto}")
     }

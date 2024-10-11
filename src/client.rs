@@ -17,16 +17,20 @@ pub fn run() {
     conexao_servidor
         .write_all(meu_nome.as_bytes())
         .expect("Não foi possível enviar o nome de usuário ao servidor");
-    let mut buffer:[u8;2] = [0;2];
-    conexao_servidor.read_exact(&mut buffer).expect("Servidor não mandou número da porta a conectar");
-    let port= u16::from_be_bytes(buffer);
+    let mut buffer: [u8; 2] = [0; 2];
+    conexao_servidor
+        .read_exact(&mut buffer)
+        .expect("Servidor não mandou número da porta a conectar");
+    let port = u16::from_be_bytes(buffer);
     println!("{port}");
     let mut port_str = port.to_string();
     port_str.insert_str(0, ":");
     ip_sem_porta.push_str(&port_str);
     println!("{ip_sem_porta}");
     let conexao_receber = TcpStream::connect(ip_sem_porta).unwrap();
-    conexao_servidor.set_nodelay(true).expect("Esse era o problema :)");
+    conexao_servidor
+        .set_nodelay(true)
+        .expect("Esse era o problema :)");
     conexao_servidor.set_nonblocking(true).expect("Não sei");
 
     let (mensagem_tx, receber_mensagem) = mpsc::channel();
@@ -41,7 +45,6 @@ pub fn run() {
             .expect("Comunicacao entre threads nao funciona");
         read_buffer.clear();
     });
-
 
     println!("Conectado com sucesso!\n");
 
