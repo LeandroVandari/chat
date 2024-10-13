@@ -165,11 +165,11 @@ impl std::fmt::Display for Message {
         let (r, g, b) =  self.autor.cor;
         let texto = match &self.tipo {
             TipoMensagem::Entrada => {
-                format!("{} entrou no chat!...", self.autor.nome.truecolor(r, g, b)).bright_blue()
+                format!("{} {}", self.autor.nome.truecolor(r, g, b), "entrou no chat!...".bright_blue())
             }
-            TipoMensagem::Saida => format!("{} saiu do chat...", self.autor.nome.truecolor(r, g, b)).red(),
+            TipoMensagem::Saida => format!("{} {}", self.autor.nome.truecolor(r, g, b), "saiu do chat...".red()),
             TipoMensagem::Chat(texto) => {
-                format!("{}: {}", self.autor.nome.truecolor(r, g, b), texto.trim_end()).white()
+                format!("{}: {}", self.autor.nome.truecolor(r, g, b), texto.trim_end().white())
             }
         };
         write!(f, "{texto}")
