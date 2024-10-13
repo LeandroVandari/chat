@@ -8,7 +8,7 @@ use std::{
     thread,
 };
 
-static mut MAX_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+use utilities::{Message, Pessoa, TipoMensagem};
 
 pub fn run() {
     let meu_nome = utilities::input("Seu nome de usuário: ");
@@ -24,6 +24,7 @@ pub fn run() {
         println!("Preparando para ouvir conexões... ");
         for stream in listener.incoming() {
             let mut stream = stream.unwrap();
+
             let mut buf_reader = BufReader::new(&mut stream);
             buf_reader
                 .read_line(&mut read_buffer)
@@ -34,6 +35,7 @@ pub fn run() {
             stream
                 .write_all(&port_bytes)
                 .expect("Não consegui enviar conexao para enviar mensagens");
+
 
             let (conexao_enviar, _addr) = enviar_mensagens.accept().unwrap();
 
@@ -66,20 +68,21 @@ pub fn run() {
             });
 
             tx.send((receber_mensagem, conexao_enviar, client.pessoa))
+
                 .expect("Comunicação entre threads não funciona...");
             read_buffer.clear();
         }
     });
 
-    let mut conexoes_receber = Vec::new();
-    let mut conexoes_enviar = Vec::new();
+    let mut conexoes = Vec::new();
     let mut mensagens = VecDeque::new();
+    let mut rec_buffer = Vec::new();
     loop {
-        while let Ok((receber_mensagem, client, pessoa)) = nova_conexao.try_recv() {
-            mensagens.push_back(Message::new(pessoa.clone(), TipoMensagem::Entrada));
-            conexoes_receber.push(receber_mensagem);
-            conexoes_enviar.push((client, pessoa.id));
+        while let Ok(client) = nova_conexao.try_recv() {
+            mensagens.push_back(Message::new(client.pessoa.clone(), TipoMensagem::Entrada));
+            conexoes.push(client);
         }
+
 
         conexoes_receber = conexoes_receber.into_iter().enumerate().filter(|(idx, cliente)| {
             if let Ok(msg) = cliente.try_recv() {
@@ -89,6 +92,7 @@ pub fn run() {
                     conexoes_enviar.remove(*idx);
                     return false;
                 }
+
             }
             return true;
         }).map(|(_, cliente)| cliente).collect();
@@ -97,10 +101,12 @@ pub fn run() {
             println!("{msg}");
             let msg_string = msg.to_string();
             let msg_bytes = msg_string.as_bytes();
+
             for conexao in &mut conexoes_enviar {
                 if msg.autor.id != conexao.1 {
                     conexao
                         .0
+
                         .write_all(msg_bytes)
                         .expect("Não foi possível enviar a mensagem aos clientes");
                 }
@@ -108,6 +114,7 @@ pub fn run() {
         }
     }
 }
+
 
 #[derive(Clone, Debug)]
 struct Pessoa {
@@ -123,6 +130,7 @@ impl Pessoa {
     }
 }
 
+
 struct Client {
     conexao: std::net::TcpStream,
     pessoa: Pessoa,
@@ -134,6 +142,7 @@ impl Client {
         Self { pessoa, conexao }
     }
 }
+
 
 #[derive(Debug)]
 struct Message {
@@ -154,11 +163,13 @@ impl Message {
     }
 }
 
+
 impl std::fmt::Display for Client {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.pessoa.nome)
     }
 }
+
 
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -175,3 +186,4 @@ impl std::fmt::Display for Message {
         write!(f, "{texto}")
     }
 }
+

@@ -17,6 +17,7 @@ pub fn run() {
     let mut conexao_servidor =
         TcpStream::connect(ip_servidor).expect("Não foi possível conectar ao servidor");
 
+
     conexao_servidor
         .write_all(meu_nome.as_bytes())
         .expect("Não foi possível enviar o nome de usuário ao servidor");
@@ -51,6 +52,7 @@ pub fn run() {
         read_buffer.clear();
     });
 
+
     println!("Conectado com sucesso!\n");
 
     let (tx, rec_msg) = mpsc::channel();
@@ -63,7 +65,7 @@ pub fn run() {
             msg.clear();
         }
     });
-
+    let mut rec_buffer = Vec::new();
     loop {
         if *unsafe {SERVER_EXITED.get_mut()} == true {
             println!("{}", "Server disconnected! Exiting...".red());
@@ -75,8 +77,10 @@ pub fn run() {
                 .expect("Não consegui mandar sua mensagem");
         }
 
-        while let Ok(msg) = receber_mensagem.try_recv() {
-            println!("{msg}");
+        if let Ok(amount) = conexao_servidor.read(&mut rec_buffer) {
+            let txt = std::str::from_utf8(&rec_buffer[0..amount]).unwrap();
+            println!("{txt}");
+            rec_buffer.clear();
         }
     }
 }
