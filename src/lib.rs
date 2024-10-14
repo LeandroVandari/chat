@@ -110,7 +110,8 @@ impl ChatWindow {
                     .block(messages)
                     .left_aligned()
                     .wrap(Wrap { trim: true });
-                let send_message_text = Paragraph::new(self.send_message.clone()).block(send_message);
+                let send_message_text =
+                    Paragraph::new(self.send_message.clone()).block(send_message);
                 frame.render_widget(texts, message_area);
                 frame.render_widget(send_message_text, send_area);
             })
@@ -121,20 +122,20 @@ impl ChatWindow {
                     match key.code {
                         KeyCode::Esc => return TerminalMessage::Quit,
                         KeyCode::Char(c) => self.send_message.push(c),
-                        KeyCode::Backspace => {self.send_message.pop();},
+                        KeyCode::Backspace => {
+                            self.send_message.pop();
+                        }
                         KeyCode::Enter => {
                             self.send_message.push('\n');
                             let msg = self.send_message.clone();
                             self.send_message.clear();
                             return TerminalMessage::SendMessage(msg);
                         }
-                        _ => ()
+                        _ => (),
                     }
                 }
-
             }
         }
-
 
         TerminalMessage::Tick
     }
@@ -153,5 +154,5 @@ impl Drop for ChatWindow {
 pub enum TerminalMessage {
     Tick,
     Quit,
-    SendMessage(String)
+    SendMessage(String),
 }

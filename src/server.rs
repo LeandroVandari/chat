@@ -75,10 +75,11 @@ pub fn run(meu_nome: String) {
         match chat_window.draw() {
             TerminalMessage::Tick => (),
             TerminalMessage::Quit => return,
-            TerminalMessage::SendMessage(msg) => mensagens.push_back(Message::new(eu.clone(), TipoMensagem::Chat(msg))),
-
+            TerminalMessage::SendMessage(msg) => {
+                mensagens.push_back(Message::new(eu.clone(), TipoMensagem::Chat(msg)))
+            }
         }
-        
+
         while let Ok((receber_mensagem, client, pessoa)) = nova_conexao.try_recv() {
             mensagens.push_back(Message::new(pessoa.clone(), TipoMensagem::Entrada));
             conexoes_receber.push(receber_mensagem);
@@ -106,9 +107,11 @@ pub fn run(meu_nome: String) {
             chat_window.receive_message(msg.clone());
             for conexao in &mut conexoes_enviar {
                 if msg.autor.id != conexao.1 {
+                    let mut msg_as_json = serde_json::to_string(&msg).unwrap();
+                    msg_as_json.push('\n');
                     conexao
                         .0
-                        .write_all(serde_json::to_string(&msg).unwrap().as_bytes())
+                        .write_all(msg_as_json.as_bytes())
                         .expect("Não foi possível enviar a mensagem aos clientes");
                 }
             }
