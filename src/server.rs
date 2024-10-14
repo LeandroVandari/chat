@@ -30,10 +30,13 @@ pub fn run(meu_nome: String) {
                 .write_all(&port_bytes)
                 .expect("Não consegui enviar conexao para enviar mensagens");
 
+            
+            let mut client = Client::new(nome_outro, stream);
+            let (h, s, l) = client.pessoa.cor;
+            client.conexao.write_all(unsafe {std::slice::from_raw_parts([h, s, l].as_ptr() as *const u8, 24)}).expect("Não consegui mandar a cor");
+
             let (conexao_enviar, _addr) = enviar_mensagens.accept().unwrap();
             conexao_enviar.set_nodelay(true).expect("aonteuhaoneuh");
-
-            let client = Client::new(nome_outro, stream);
 
             let (mensagem_tx, receber_mensagem) = std::sync::mpsc::channel();
             let pessoa = client.pessoa.clone();

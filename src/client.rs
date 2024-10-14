@@ -9,7 +9,7 @@ use std::thread;
 static mut SERVER_EXITED: atomic::AtomicBool = atomic::AtomicBool::new(false);
 
 pub fn run(meu_nome: String) {
-    let eu = Pessoa::new(meu_nome);
+    let mut eu = Pessoa::new(meu_nome);
     let mut ip_servidor = utilities::input("IP da sala a conectar: ")
         .trim()
         .to_string();
@@ -29,6 +29,12 @@ pub fn run(meu_nome: String) {
     let mut port_str = port.to_string();
     port_str.insert_str(0, ":");
     ip_sem_porta.push_str(&port_str);
+
+    let mut buffer: [u8;24] = [0; 24];
+    conexao_servidor.read_exact(&mut buffer).expect("Servidor não mandou a cor");
+    let cores = unsafe {std::slice::from_raw_parts(buffer.as_ptr() as *const f64, 3)};
+    eu.set_cor(cores[0], cores[1], cores[2]);
+
     let conexao_receber = TcpStream::connect(ip_sem_porta).unwrap();
     conexao_receber.set_nodelay(true).expect("AAAAAAAA");
     conexao_servidor

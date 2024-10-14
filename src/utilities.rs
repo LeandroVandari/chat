@@ -51,6 +51,9 @@ impl Pessoa {
             ),
         }
     }
+    pub fn set_cor (&mut self, h: f64, s:f64, l:f64) {
+        self.cor = (h,s,l)
+    }
 }
 
 pub struct Client {
