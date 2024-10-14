@@ -95,7 +95,7 @@ impl Message {
             ]),
             TipoMensagem::Saida => Line::from(vec![
                 self.autor.nome.clone().fg(Color::from_hsl(h, s, l)),
-                " saiu no chat!...".fg(Color::Red),
+                " saiu do chat!...".fg(Color::Red),
             ]),
             TipoMensagem::Chat(texto) => Line::from(vec![
                 self.autor.nome.clone().fg(Color::from_hsl(h, s, l)),

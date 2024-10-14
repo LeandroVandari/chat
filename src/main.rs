@@ -7,7 +7,7 @@ fn main() {
     let mut modo = Modo::from_string(input("(C)liente ou (S)ervidor? (Padrão: Cliente) "));
     while let Err(e) = modo {
         println!("Erro: {e}");
-        modo = Modo::from_string(input("(C)liente ou (S)ervidor? Padrão: Cliente"));
+        modo = Modo::from_string(input("(C)liente ou (S)ervidor? (Padrão: Cliente) "));
     }
 
     let modo = modo.unwrap();
