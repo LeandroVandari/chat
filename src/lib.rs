@@ -17,6 +17,7 @@ pub struct ChatWindow {
     terminal: Terminal<CrosstermBackend<Stdout>>,
     ip: Option<IpAddr>,
     messages: Vec<Message>,
+    send_message: String,
     tick: u32,
 }
 
@@ -29,11 +30,13 @@ impl ChatWindow {
             terminal,
             ip,
             messages: vec![],
+            send_message: String::new(),
             tick: 0,
         }
     }
 
-    pub fn draw(&mut self) -> bool {
+    pub fn draw(&mut self) -> TerminalMessage {
+        self.tick += 1;
         self.terminal
             .draw(|frame| {
                 let [message_area, send_area] =
@@ -103,26 +106,37 @@ impl ChatWindow {
                     .collect::<Vec<Line>>();
                 lines_vec.reverse();
 
-                // eprintln!("{:?}", self.messages.concat());
                 let texts = Paragraph::new(lines_vec)
                     .block(messages)
                     .left_aligned()
                     .wrap(Wrap { trim: true });
-
+                let send_message_text = Paragraph::new(self.send_message.clone()).block(send_message);
                 frame.render_widget(texts, message_area);
-                frame.render_widget(send_message, send_area);
+                frame.render_widget(send_message_text, send_area);
             })
             .expect("Ratatui não funcionou");
         if let Ok(true) = event::poll(Duration::from_millis(10)) {
             if let event::Event::Key(key) = event::read().unwrap() {
-                if key.kind == KeyEventKind::Press && key.code == KeyCode::Esc {
-                    return false;
+                if key.kind == KeyEventKind::Press {
+                    match key.code {
+                        KeyCode::Esc => return TerminalMessage::Quit,
+                        KeyCode::Char(c) => self.send_message.push(c),
+                        KeyCode::Backspace => {self.send_message.pop();},
+                        KeyCode::Enter => {
+                            self.send_message.push('\n');
+                            let msg = self.send_message.clone();
+                            self.send_message.clear();
+                            return TerminalMessage::SendMessage(msg);
+                        }
+                        _ => ()
+                    }
                 }
+
             }
         }
-        self.tick += 1;
 
-        true
+
+        TerminalMessage::Tick
     }
 
     pub fn receive_message(&mut self, message: utilities::Message) {
@@ -134,4 +148,10 @@ impl Drop for ChatWindow {
     fn drop(&mut self) {
         ratatui::restore();
     }
+}
+
+pub enum TerminalMessage {
+    Tick,
+    Quit,
+    SendMessage(String)
 }

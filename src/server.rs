@@ -1,6 +1,6 @@
 use comunicacao::{
-    utilities::{Client, Message, TipoMensagem},
-    ChatWindow,
+    utilities::{Client, Message, Pessoa, TipoMensagem},
+    ChatWindow, TerminalMessage,
 };
 use local_ip_address::local_ip;
 use std::{
@@ -11,6 +11,7 @@ use std::{
 };
 
 pub fn run(meu_nome: String) {
+    let eu = Pessoa::new(meu_nome);
     let listener = TcpListener::bind("0.0.0.0:7878").expect("Não consegui abrir um servidor");
     let (tx, nova_conexao) = std::sync::mpsc::channel();
     let _receber_conexoes = thread::spawn(move || {
@@ -30,6 +31,7 @@ pub fn run(meu_nome: String) {
                 .expect("Não consegui enviar conexao para enviar mensagens");
 
             let (conexao_enviar, _addr) = enviar_mensagens.accept().unwrap();
+            conexao_enviar.set_nodelay(true).expect("aonteuhaoneuh");
 
             let client = Client::new(nome_outro, stream);
 
@@ -70,9 +72,13 @@ pub fn run(meu_nome: String) {
     let mut mensagens = VecDeque::new();
     let mut chat_window = ChatWindow::new(Some(local_ip().expect("Não foi possível pegar o IP")));
     loop {
-        if !chat_window.draw() {
-            return;
+        match chat_window.draw() {
+            TerminalMessage::Tick => (),
+            TerminalMessage::Quit => return,
+            TerminalMessage::SendMessage(msg) => mensagens.push_back(Message::new(eu.clone(), TipoMensagem::Chat(msg))),
+
         }
+        
         while let Ok((receber_mensagem, client, pessoa)) = nova_conexao.try_recv() {
             mensagens.push_back(Message::new(pessoa.clone(), TipoMensagem::Entrada));
             conexoes_receber.push(receber_mensagem);

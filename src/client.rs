@@ -28,6 +28,7 @@ pub fn run(meu_nome: String) {
     port_str.insert_str(0, ":");
     ip_sem_porta.push_str(&port_str);
     let conexao_receber = TcpStream::connect(ip_sem_porta).unwrap();
+    conexao_receber.set_nodelay(true).expect("AAAAAAAA");
     conexao_servidor
         .set_nodelay(true)
         .expect("Esse era o problema :)");

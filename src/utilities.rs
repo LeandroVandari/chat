@@ -96,7 +96,7 @@ impl Message {
             TipoMensagem::Chat(texto) => Line::from(vec![
                 self.autor.nome.clone().fg(Color::from_hsl(h, s, l)),
                 ratatui::text::Span::raw(": "),
-                ratatui::text::Span::raw(texto.as_str().trim_end().to_string()),
+                ratatui::text::Span::raw(texto.as_str().to_string()),
             ]),
         }
     }
@@ -128,7 +128,7 @@ impl std::fmt::Display for Message {
                 format!(
                     "{}: {}",
                     self.autor.nome.clone().fg(Color::from_hsl(h, s, l)),
-                    texto.trim_end()
+                    texto
                 )
             }
         };
