@@ -101,6 +101,8 @@ dependencies = [
  "local-ip-address",
  "rand",
  "ratatui",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

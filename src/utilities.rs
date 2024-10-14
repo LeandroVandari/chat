@@ -2,6 +2,7 @@ use ratatui::{
     style::{Color, Stylize},
     text::Line,
 };
+use serde::{Deserialize, Serialize};
 use std::io::{prelude::*, stdin, stdout};
 use std::net::TcpStream;
 
@@ -30,7 +31,7 @@ impl Conexao {
 
 pub static mut MAX_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Pessoa {
     pub nome: String,
     pub id: u32,
@@ -64,13 +65,13 @@ impl Client {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     pub autor: Pessoa,
     pub tipo: TipoMensagem,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TipoMensagem {
     Entrada,
     Saida,

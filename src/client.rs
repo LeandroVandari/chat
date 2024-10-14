@@ -1,4 +1,4 @@
-use comunicacao::utilities;
+use comunicacao::{utilities, ChatWindow, TerminalMessage};
 use ratatui::style::{Color, Stylize};
 use std::io::{prelude::*, BufReader};
 use std::net::TcpStream;
@@ -45,38 +45,36 @@ pub fn run(meu_nome: String) {
             unsafe { SERVER_EXITED.store(true, std::sync::atomic::Ordering::Relaxed) };
             return;
         }
+        let msg = serde_json::from_str(&read_buffer).unwrap();
         mensagem_tx
-            .send(read_buffer.clone())
+            .send(msg)
             .expect("Comunicacao entre threads nao funciona");
         read_buffer.clear();
     });
 
     println!("Conectado com sucesso!\n");
 
-    let (tx, rec_msg) = mpsc::channel();
-    let _ = thread::spawn(move || {
-        let mut msg = String::new();
-
-        loop {
-            std::io::stdin().read_line(&mut msg).unwrap();
-            let _ = tx.send(msg.clone());
-            msg.clear();
-        }
-    });
-
+    let mut chat_window = ChatWindow::new(None);
+    let mut message = None;
     loop {
+
+        match chat_window.draw() {
+            TerminalMessage::Tick => (),
+            TerminalMessage::Quit => return,
+            TerminalMessage::SendMessage(msg) => {message = Some(msg)}
+        }
         if *unsafe { SERVER_EXITED.get_mut() } == true {
             println!("{}", "Server disconnected! Exiting...".fg(Color::Red));
             break;
         }
-        while let Ok(msg) = rec_msg.try_recv() {
+       if let Some(ref msg) = message {
             conexao_servidor
                 .write_all(format!("{}", msg).as_bytes())
                 .expect("Não consegui mandar sua mensagem");
         }
 
         while let Ok(msg) = receber_mensagem.try_recv() {
-            println!("{msg}");
+            chat_window.receive_message(msg);
         }
     }
 }

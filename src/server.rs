@@ -103,14 +103,12 @@ pub fn run(meu_nome: String) {
             .collect();
 
         while let Some(msg) = mensagens.pop_front() {
-            let msg_string = msg.to_string();
             chat_window.receive_message(msg.clone());
-            let msg_bytes = msg_string.as_bytes();
             for conexao in &mut conexoes_enviar {
                 if msg.autor.id != conexao.1 {
                     conexao
                         .0
-                        .write_all(msg_bytes)
+                        .write_all(serde_json::to_string(&msg).unwrap().as_bytes())
                         .expect("Não foi possível enviar a mensagem aos clientes");
                 }
             }
