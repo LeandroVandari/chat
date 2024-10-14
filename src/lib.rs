@@ -48,27 +48,32 @@ impl ChatWindow {
                     )
                 }
                 // eprintln!("{:?}", self.messages.concat());
-                let texts =
-                    Paragraph::new(self.messages.iter().map(|message|message.formatted()).collect::<Vec<Line>>())
-                    .block(messages)
-                    .left_aligned()
-                    .wrap(Wrap { trim: true });
+                let texts = Paragraph::new(
+                    self.messages
+                        .iter()
+                        .map(|message| message.formatted())
+                        .collect::<Vec<Line>>(),
+                )
+                .block(messages)
+                .left_aligned()
+                .wrap(Wrap { trim: true });
                 frame.render_widget(texts, message_area);
                 frame.render_widget(send_message, send_area);
             })
             .expect("Ratatui não funcionou");
         if let Ok(true) = event::poll(Duration::from_millis(100)) {
-        if let event::Event::Key(key) = event::read().unwrap() {
-            if key.kind == KeyEventKind::Press && key.code == KeyCode::Esc {
-                return false;
+            if let event::Event::Key(key) = event::read().unwrap() {
+                if key.kind == KeyEventKind::Press && key.code == KeyCode::Esc {
+                    return false;
+                }
             }
-        }}
+        }
         self.tick += 1;
 
         true
     }
 
-    pub fn receive_message(&mut self, message: utilities::Message ) {
+    pub fn receive_message(&mut self, message: utilities::Message) {
         self.messages.push(message);
     }
 }
@@ -78,4 +83,3 @@ impl Drop for ChatWindow {
         ratatui::restore();
     }
 }
-

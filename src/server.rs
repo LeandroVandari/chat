@@ -1,4 +1,7 @@
-use comunicacao::{ChatWindow, utilities::{Client, Message, TipoMensagem}};
+use comunicacao::{
+    utilities::{Client, Message, TipoMensagem},
+    ChatWindow,
+};
 use local_ip_address::local_ip;
 use std::{
     collections::VecDeque,
@@ -6,8 +9,6 @@ use std::{
     net::TcpListener,
     thread,
 };
-
-
 
 pub fn run(meu_nome: String) {
     let listener = TcpListener::bind("0.0.0.0:7878").expect("Não consegui abrir um servidor");
@@ -110,4 +111,3 @@ pub fn run(meu_nome: String) {
         }
     }
 }
-

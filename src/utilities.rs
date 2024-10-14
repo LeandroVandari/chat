@@ -1,6 +1,9 @@
+use ratatui::{
+    style::{Color, Stylize},
+    text::Line,
+};
 use std::io::{prelude::*, stdin, stdout};
 use std::net::TcpStream;
-use ratatui::{style::{Color, Stylize}, text::Line};
 
 pub fn input(mensagem: &str) -> String {
     let mut meu_nome = String::new();
@@ -81,17 +84,21 @@ impl Message {
 
     pub fn formatted(&self) -> Line {
         let (h, s, l) = self.autor.cor;
-        match self.tipo.clone(){
-        TipoMensagem::Entrada => {
-            Line::from(vec![self.autor.nome.clone().fg(Color::from_hsl(h, s, l)), " entrou no chat!...".fg(Color::LightBlue)])
-
+        match self.tipo.clone() {
+            TipoMensagem::Entrada => Line::from(vec![
+                self.autor.nome.clone().fg(Color::from_hsl(h, s, l)),
+                " entrou no chat!...".fg(Color::LightBlue),
+            ]),
+            TipoMensagem::Saida => Line::from(vec![
+                self.autor.nome.clone().fg(Color::from_hsl(h, s, l)),
+                " saiu no chat!...".fg(Color::Red),
+            ]),
+            TipoMensagem::Chat(texto) => Line::from(vec![
+                self.autor.nome.clone().fg(Color::from_hsl(h, s, l)),
+                ratatui::text::Span::raw(": "),
+                ratatui::text::Span::raw(texto.as_str().trim_end().to_string()),
+            ]),
         }
-        TipoMensagem::Saida => 
-            Line::from(vec![self.autor.nome.clone().fg(Color::from_hsl(h, s, l)), " saiu no chat!...".fg(Color::Red)])
-        ,
-        TipoMensagem::Chat(texto) => {
-            Line::from(vec![self.autor.nome.clone().fg(Color::from_hsl(h, s, l)), ratatui::text::Span::raw(": "), ratatui::text::Span::raw(texto.as_str().trim_end().to_string())])
-        }}
     }
 }
 
@@ -100,7 +107,6 @@ impl std::fmt::Display for Client {
         write!(f, "{}", self.pessoa.nome)
     }
 }
-
 
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
