@@ -59,18 +59,16 @@ impl ChatWindow {
                         (
                             line.spans
                                 .iter()
-                                .fold(0, |acc, span| acc + span.content.len()).div_ceil(message_area.width as usize - 2),
+                                .fold(0, |acc, span| acc + span.content.len())
+                                .div_ceil(message_area.width as usize - 2),
                             line,
                         )
                     })
-                    
-                    .take_while(|(len, line)| {
+                    .take_while(|(len, _line)| {
                         sum += len;
-                        sum < message_area.height as usize
+                        sum < (message_area.height - 2) as usize
                     })
-                    
-                    .map(|(len, line)| line)
-                    
+                    .map(|(_len, line)| line)
                     .collect::<Vec<Line>>();
                 lines_vec.reverse();
 
