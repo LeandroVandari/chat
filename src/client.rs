@@ -64,6 +64,7 @@ pub fn run(meu_nome: String) {
             TerminalMessage::Tick => (),
             TerminalMessage::Quit => return,
             TerminalMessage::SendMessage(msg) => message = Some(msg),
+            TerminalMessage::Command(command) => ()
         }
         if *unsafe { SERVER_EXITED.get_mut() } == true {
             println!("{}", "Server disconnected! Exiting...".fg(Color::Red));

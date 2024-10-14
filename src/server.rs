@@ -78,6 +78,7 @@ pub fn run(meu_nome: String) {
             TerminalMessage::SendMessage(msg) => {
                 mensagens.push_back(Message::new(eu.clone(), TipoMensagem::Chat(msg)))
             }
+            TerminalMessage::Command(command) => ()
         }
 
         while let Ok((receber_mensagem, client, pessoa)) = nova_conexao.try_recv() {

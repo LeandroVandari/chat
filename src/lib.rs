@@ -155,4 +155,12 @@ pub enum TerminalMessage {
     Tick,
     Quit,
     SendMessage(String),
+    Command(Command)
+}
+
+pub enum Command {
+    Kick(utilities::Pessoa),
+    Ban(utilities::Pessoa),
+    ChangeColor(Color),
+    Mute(utilities::Pessoa)
 }
