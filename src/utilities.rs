@@ -47,7 +47,7 @@ impl Pessoa {
             cor: (
                 rand::random::<f64>() * 360.0,
                 rand::random::<f64>() * 100.0,
-                rand::random::<f64>() * 100.0,
+                rand::random::<f64>() * 50.0 + 50.0,
             ),
         }
     }
