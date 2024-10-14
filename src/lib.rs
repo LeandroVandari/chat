@@ -11,11 +11,12 @@ use ratatui::{
     widgets::{block::Title, Block, Paragraph, Wrap},
     Terminal,
 };
+use utilities::Message;
 
 pub struct ChatWindow {
     terminal: Terminal<CrosstermBackend<Stdout>>,
     ip: Option<IpAddr>,
-    messages: Vec<utilities::Message>,
+    messages: Vec<Message>,
     tick: u32,
 }
 
@@ -47,21 +48,43 @@ impl ChatWindow {
                             .position(ratatui::widgets::block::Position::Bottom),
                     )
                 }
+                let mut sum = 0;
+                let mut lines_vec = self
+                    .messages
+                    .iter()
+                    .rev()
+                    .take(message_area.height as usize - 2)
+                    .map(|msg| msg.formatted())
+                    .map(|line| {
+                        (
+                            line.spans
+                                .iter()
+                                .fold(0, |acc, span| acc + span.content.len()).div_ceil(message_area.width as usize - 2),
+                            line,
+                        )
+                    })
+                    
+                    .take_while(|(len, line)| {
+                        sum += len;
+                        sum < message_area.height as usize
+                    })
+                    
+                    .map(|(len, line)| line)
+                    
+                    .collect::<Vec<Line>>();
+                lines_vec.reverse();
+
                 // eprintln!("{:?}", self.messages.concat());
-                let texts = Paragraph::new(
-                    self.messages
-                        .iter()
-                        .map(|message| message.formatted())
-                        .collect::<Vec<Line>>(),
-                )
-                .block(messages)
-                .left_aligned()
-                .wrap(Wrap { trim: true });
+                let texts = Paragraph::new(lines_vec)
+                    .block(messages)
+                    .left_aligned()
+                    .wrap(Wrap { trim: true });
+
                 frame.render_widget(texts, message_area);
                 frame.render_widget(send_message, send_area);
             })
             .expect("Ratatui não funcionou");
-        if let Ok(true) = event::poll(Duration::from_millis(100)) {
+        if let Ok(true) = event::poll(Duration::from_millis(10)) {
             if let event::Event::Key(key) = event::read().unwrap() {
                 if key.kind == KeyEventKind::Press && key.code == KeyCode::Esc {
                     return false;
