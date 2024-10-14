@@ -47,7 +47,8 @@ pub fn run(meu_nome: String) {
             unsafe { SERVER_EXITED.store(true, std::sync::atomic::Ordering::Relaxed) };
             return;
         }
-        let msg = serde_json::from_str(&read_buffer);
+        read_buffer.pop();
+        let msg = serde_json::from_str(&read_buffer).unwrap();
         mensagem_tx
             .send(msg)
             .expect("Comunicacao entre threads nao funciona");
@@ -76,7 +77,7 @@ pub fn run(meu_nome: String) {
         }
 
         while let Ok(msg) = receber_mensagem.try_recv() {
-            chat_window.receive_message(Message::new(eu.clone(), utilities::TipoMensagem::Chat(msg.unwrap())));
+            chat_window.receive_message(msg);
         }
         message = None;
     }
