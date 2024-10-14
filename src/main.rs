@@ -11,10 +11,10 @@ fn main() {
     }
 
     let modo = modo.unwrap();
-
+    let meu_nome = input("Seu nome de usuário: ");
     match modo {
-        Modo::Cliente => client::run(),
-        Modo::Servidor => server::run(),
+        Modo::Cliente => client::run(meu_nome),
+        Modo::Servidor => server::run(meu_nome),
     }
 }
 

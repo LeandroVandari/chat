@@ -1,5 +1,4 @@
-use colored::Colorize;
-use comunicacao::utilities;
+use comunicacao::{ChatWindow, utilities::{Client, Message, TipoMensagem}};
 use local_ip_address::local_ip;
 use std::{
     collections::VecDeque,
@@ -8,16 +7,10 @@ use std::{
     thread,
 };
 
-static mut MAX_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-pub fn run() {
-    let meu_nome = utilities::input("Seu nome de usuário: ");
+
+pub fn run(meu_nome: String) {
     let listener = TcpListener::bind("0.0.0.0:7878").expect("Não consegui abrir um servidor");
-    println!(
-        "IP da sala: {}",
-        local_ip().expect("Não consegui pegar o seu IP")
-    );
-
     let (tx, nova_conexao) = std::sync::mpsc::channel();
     let _receber_conexoes = thread::spawn(move || {
         let mut read_buffer = String::new();
@@ -74,28 +67,37 @@ pub fn run() {
     let mut conexoes_receber = Vec::new();
     let mut conexoes_enviar = Vec::new();
     let mut mensagens = VecDeque::new();
+    let mut chat_window = ChatWindow::new(Some(local_ip().expect("Não foi possível pegar o IP")));
     loop {
+        if !chat_window.draw() {
+            return;
+        }
         while let Ok((receber_mensagem, client, pessoa)) = nova_conexao.try_recv() {
             mensagens.push_back(Message::new(pessoa.clone(), TipoMensagem::Entrada));
             conexoes_receber.push(receber_mensagem);
             conexoes_enviar.push((client, pessoa.id));
         }
 
-        conexoes_receber = conexoes_receber.into_iter().enumerate().filter(|(idx, cliente)| {
-            if let Ok(msg) = cliente.try_recv() {
-                let tipo = msg.tipo.clone();
-                mensagens.push_back(msg);
-                if let TipoMensagem::Saida = tipo {
-                    conexoes_enviar.remove(*idx);
-                    return false;
+        conexoes_receber = conexoes_receber
+            .into_iter()
+            .enumerate()
+            .filter(|(idx, cliente)| {
+                if let Ok(msg) = cliente.try_recv() {
+                    let tipo = msg.tipo.clone();
+                    mensagens.push_back(msg);
+                    if let TipoMensagem::Saida = tipo {
+                        conexoes_enviar.remove(*idx);
+                        return false;
+                    }
                 }
-            }
-            return true;
-        }).map(|(_, cliente)| cliente).collect();
+                return true;
+            })
+            .map(|(_, cliente)| cliente)
+            .collect();
 
         while let Some(msg) = mensagens.pop_front() {
-            println!("{msg}");
             let msg_string = msg.to_string();
+            chat_window.receive_message(msg.clone());
             let msg_bytes = msg_string.as_bytes();
             for conexao in &mut conexoes_enviar {
                 if msg.autor.id != conexao.1 {
@@ -109,69 +111,3 @@ pub fn run() {
     }
 }
 
-#[derive(Clone, Debug)]
-struct Pessoa {
-    nome: String,
-    id: u32,
-    cor: (u8, u8, u8)
-}
-
-impl Pessoa {
-    fn new(nome: String) -> Self {
-        let id = unsafe { MAX_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed) };
-        Self { nome, id, cor: (rand::random::<u8>(), rand::random::<u8>(), rand::random::<u8>()) }
-    }
-}
-
-struct Client {
-    conexao: std::net::TcpStream,
-    pessoa: Pessoa,
-}
-
-impl Client {
-    fn new(nome: String, conexao: std::net::TcpStream) -> Self {
-        let pessoa = Pessoa::new(nome);
-        Self { pessoa, conexao }
-    }
-}
-
-#[derive(Debug)]
-struct Message {
-    autor: Pessoa,
-    pub tipo: TipoMensagem,
-}
-
-#[derive(Debug, Clone)]
-enum TipoMensagem {
-    Entrada,
-    Saida,
-    Chat(String),
-}
-
-impl Message {
-    fn new(autor: Pessoa, tipo: TipoMensagem) -> Self {
-        Self { autor, tipo }
-    }
-}
-
-impl std::fmt::Display for Client {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.pessoa.nome)
-    }
-}
-
-impl std::fmt::Display for Message {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (r, g, b) =  self.autor.cor;
-        let texto = match &self.tipo {
-            TipoMensagem::Entrada => {
-                format!("{} {}", self.autor.nome.truecolor(r, g, b), "entrou no chat!...".bright_blue())
-            }
-            TipoMensagem::Saida => format!("{} {}", self.autor.nome.truecolor(r, g, b), "saiu do chat...".red()),
-            TipoMensagem::Chat(texto) => {
-                format!("{}: {}", self.autor.nome.truecolor(r, g, b), texto.trim_end().white())
-            }
-        };
-        write!(f, "{texto}")
-    }
-}

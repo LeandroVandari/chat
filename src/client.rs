@@ -1,5 +1,5 @@
-use colored::Colorize;
 use comunicacao::utilities;
+use ratatui::style::{Color, Stylize};
 use std::io::{prelude::*, BufReader};
 use std::net::TcpStream;
 use std::sync::{atomic, mpsc};
@@ -7,8 +7,7 @@ use std::thread;
 
 static mut SERVER_EXITED: atomic::AtomicBool = atomic::AtomicBool::new(false);
 
-pub fn run() {
-    let meu_nome = utilities::input("Seu nome de usuário: ");
+pub fn run(meu_nome: String) {
     let mut ip_servidor = utilities::input("IP da sala a conectar: ")
         .trim()
         .to_string();
@@ -42,7 +41,7 @@ pub fn run() {
             .read_line(&mut read_buffer)
             .expect("Primeira mensagem deve ser o nome do usuário");
         if amount == 0 {
-            unsafe{SERVER_EXITED.store(true, std::sync::atomic::Ordering::Relaxed)};
+            unsafe { SERVER_EXITED.store(true, std::sync::atomic::Ordering::Relaxed) };
             return;
         }
         mensagem_tx
@@ -65,8 +64,8 @@ pub fn run() {
     });
 
     loop {
-        if *unsafe {SERVER_EXITED.get_mut()} == true {
-            println!("{}", "Server disconnected! Exiting...".red());
+        if *unsafe { SERVER_EXITED.get_mut() } == true {
+            println!("{}", "Server disconnected! Exiting...".fg(Color::Red));
             break;
         }
         while let Ok(msg) = rec_msg.try_recv() {
