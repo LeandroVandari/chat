@@ -70,7 +70,10 @@ pub fn run(meu_nome: String) {
             break;
         }
         if let Some(ref msg) = message {
-            chat_window.receive_message(Message::new(eu.clone(), utilities::TipoMensagem::Chat(msg.clone())));
+            chat_window.receive_message(Message::new(
+                eu.clone(),
+                utilities::TipoMensagem::Chat(msg.clone()),
+            ));
             conexao_servidor
                 .write_all(format!("{}", msg).as_bytes())
                 .expect("Não consegui mandar sua mensagem");
