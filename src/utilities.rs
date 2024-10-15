@@ -54,6 +54,12 @@ impl Pessoa {
     pub fn set_cor (&mut self, h: f64, s:f64, l:f64) {
         self.cor = (h,s,l)
     }
+
+    pub const unsafe fn empty() -> Self {
+        Self {
+            nome: String::new(), id: 0, cor: (0.0, 0.0, 0.0)
+        }
+    }
 }
 
 pub struct Client {
@@ -139,3 +145,4 @@ impl std::fmt::Display for Message {
         write!(f, "{texto}")
     }
 }
+

@@ -2,50 +2,21 @@ use comunicacao::utilities::{Message, Pessoa};
 use comunicacao::{utilities, ChatWindow, TerminalMessage};
 use ratatui::style::{Color, Stylize};
 use std::io::{prelude::*, BufReader};
-use std::net::TcpStream;
+use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::sync::{atomic, mpsc};
 use std::thread;
 
 static mut SERVER_EXITED: atomic::AtomicBool = atomic::AtomicBool::new(false);
 
 pub fn run(meu_nome: String) {
-    let mut eu = Pessoa::new(meu_nome);
-    let mut ip_servidor = utilities::input("IP da sala a conectar: ")
-        .trim()
-        .to_string();
-    let mut ip_sem_porta = ip_servidor.clone();
-    ip_servidor.push_str(":7878");
-    let mut conexao_servidor =
-        TcpStream::connect(ip_servidor).expect("Não foi possível conectar ao servidor");
+    let ip_servidor: std::net::IpAddr = utilities::input("IP da sala a conectar: ").trim().parse().expect("Endereço IP inválido");
+    let (mut servidor, eu) = Servidor::new(ip_servidor, meu_nome);
 
-    conexao_servidor
-        .write_all(eu.nome.as_bytes())
-        .expect("Não foi possível enviar o nome de usuário ao servidor");
-    let mut buffer: [u8; 2] = [0; 2];
-    conexao_servidor
-        .read_exact(&mut buffer)
-        .expect("Servidor não mandou número da porta a conectar");
-    let port = u16::from_be_bytes(buffer);
-    let mut port_str = port.to_string();
-    port_str.insert_str(0, ":");
-    ip_sem_porta.push_str(&port_str);
-
-    let mut buffer: [u8;24] = [0; 24];
-    conexao_servidor.read_exact(&mut buffer).expect("Servidor não mandou a cor");
-    let cores = unsafe {std::slice::from_raw_parts(buffer.as_ptr() as *const f64, 3)};
-    eu.set_cor(cores[0], cores[1], cores[2]);
-
-    let conexao_receber = TcpStream::connect(ip_sem_porta).unwrap();
-    conexao_receber.set_nodelay(true).expect("AAAAAAAA");
-    conexao_servidor
-        .set_nodelay(true)
-        .expect("Esse era o problema :)");
-    conexao_servidor.set_nonblocking(true).expect("Não sei");
 
     let (mensagem_tx, receber_mensagem) = mpsc::channel();
     let _receber_mensagens = thread::spawn(move || loop {
         let mut read_buffer = String::new();
-        let mut buf_reader = BufReader::new(&conexao_receber);
+        let mut buf_reader = BufReader::new(&servidor.conexao_receber);
         let amount = buf_reader
             .read_line(&mut read_buffer)
             .expect("Alguma coisa");
@@ -81,7 +52,7 @@ pub fn run(meu_nome: String) {
                 eu.clone(),
                 utilities::TipoMensagem::Chat(msg.clone()),
             ));
-            conexao_servidor
+            servidor.conexao_enviar
                 .write_all(format!("{}", msg).as_bytes())
                 .expect("Não consegui mandar sua mensagem");
         }
@@ -91,4 +62,41 @@ pub fn run(meu_nome: String) {
         }
         message = None;
     }
+}
+
+
+struct Servidor {
+    conexao_enviar: TcpStream,
+    conexao_receber: TcpStream
+}
+impl Servidor {
+fn new(ip: IpAddr, meu_nome: String) -> (Self, Pessoa)  
+{
+    let conectar = SocketAddr::new(ip, 7878);
+    let mut conexao_enviar =
+        TcpStream::connect(conectar).expect("Não foi possível conectar ao servidor");
+
+    conexao_enviar
+        .write_all(meu_nome.as_bytes())
+        .expect("Não foi possível enviar o nome de usuário ao servidor");
+
+    let mut buffer: [u8; 2] = [0; 2];
+    conexao_enviar
+        .read_exact(&mut buffer)
+        .expect("Servidor não mandou número da porta a conectar");
+    let port = u16::from_be_bytes(buffer);
+    conexao_enviar.set_nodelay(true).unwrap();
+    conexao_enviar.set_nonblocking(true).unwrap();
+
+    let mut conexao_receber = TcpStream::connect(SocketAddr::new(ip, port)).unwrap();
+
+    let mut tamanho_eu_buf = [0; 2];
+    conexao_receber.read(&mut tamanho_eu_buf).unwrap();
+    let mut eu_buf = vec![0; u16::from_be_bytes(tamanho_eu_buf) as usize];
+    conexao_receber.read(&mut eu_buf).unwrap();
+    let eu = serde_json::from_str(&String::from_utf8(eu_buf).unwrap()).unwrap();
+
+    (Self {conexao_enviar, conexao_receber}, eu)
+}
+
 }
