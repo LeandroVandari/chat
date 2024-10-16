@@ -146,3 +146,6 @@ impl std::fmt::Display for Message {
     }
 }
 
+pub fn send_message(stream: TcpStream, msg: &[u8]) {
+    
+}

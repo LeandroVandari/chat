@@ -16,7 +16,6 @@ pub fn run(meu_nome: String) {
     let (tx, nova_conexao) = std::sync::mpsc::channel();
     let _receber_conexoes = thread::spawn(move || {
         let mut read_buffer = String::new();
-        println!("Preparando para ouvir conexões... ");
         for stream in listener.incoming() {
             let mut stream = stream.unwrap();
             let mut buf_reader = BufReader::new(&mut stream);
@@ -35,20 +34,19 @@ pub fn run(meu_nome: String) {
             let (mut conexao_enviar, _addr) = enviar_mensagens.accept().unwrap();
             conexao_enviar.set_nodelay(true).expect("aonteuhaoneuh");
 
-            let client = Client::new(nome_outro, stream);
+            let mut client = Client::new(nome_outro, stream);
             let client_json = serde_json::to_string(&client.pessoa).unwrap();
             conexao_enviar.write_all(&(client_json.len() as u16).to_be_bytes()).unwrap();
             conexao_enviar.write_all(client_json.as_bytes()).unwrap();
-
+            client.conexao.set_nonblocking(true).unwrap();
             let (mensagem_tx, receber_mensagem) = std::sync::mpsc::channel();
             let pessoa = client.pessoa.clone();
             let _receber_mensagens_do_cliente = thread::spawn(move || {
-                let mut read_buffer = String::new();
-                let mut buf_reader = BufReader::new(&client.conexao);
+                let mut read_buffer = vec![0;2usize.pow(20)];
                 loop {
-                    let amount = buf_reader
-                        .read_line(&mut read_buffer)
-                        .expect("alguma mensagem");
+                    
+                    if let Ok(amount) = client.conexao.read(&mut read_buffer)
+                         {
 
                     if amount == 0 {
                         mensagem_tx
@@ -56,13 +54,16 @@ pub fn run(meu_nome: String) {
                             .expect("Comunicacao entre threads nao funciona");
                         break;
                     }
+                    let message_size = u32::from_be_bytes(unsafe {*((read_buffer[0..4].as_ptr()) as *const [u8;4])}) as usize;
+                    let texto = String::from_utf8(read_buffer[4..message_size+4].to_vec()).unwrap();
                     mensagem_tx
                         .send(Message::new(
                             pessoa.clone(),
-                            TipoMensagem::Chat(read_buffer.clone()),
+                            TipoMensagem::Chat(texto),
                         ))
                         .expect("Comunicacao entre threads nao funciona");
                     read_buffer.clear();
+                        }
                 }
             });
 
@@ -113,11 +114,12 @@ pub fn run(meu_nome: String) {
             chat_window.receive_message(msg.clone());
             for conexao in &mut conexoes_enviar {
                 if msg.autor.id != conexao.1 {
-                    let mut msg_as_json = serde_json::to_string(&msg).unwrap();
-                    msg_as_json.push('\n');
+                    let mut msg_json = serde_json::to_string(&msg).unwrap();
+                    let msg_bytes = msg_json.as_bytes();
+    
                     conexao
                         .0
-                        .write_all(msg_as_json.as_bytes())
+                        .write_all(&[msg_bytes.len() as u8])
                         .expect("Não foi possível enviar a mensagem aos clientes");
                 }
             }

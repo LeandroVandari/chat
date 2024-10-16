@@ -52,8 +52,9 @@ pub fn run(meu_nome: String) {
                 eu.clone(),
                 utilities::TipoMensagem::Chat(msg.clone()),
             ));
+            let message_bytes = msg.as_bytes();
             servidor.conexao_enviar
-                .write_all(format!("{}", msg).as_bytes())
+                .write_all(&[&(message_bytes.len() as u32).to_be_bytes(), message_bytes].concat())
                 .expect("Não consegui mandar sua mensagem");
         }
 
@@ -91,9 +92,9 @@ fn new(ip: IpAddr, meu_nome: String) -> (Self, Pessoa)
     let mut conexao_receber = TcpStream::connect(SocketAddr::new(ip, port)).unwrap();
 
     let mut tamanho_eu_buf = [0; 2];
-    conexao_receber.read(&mut tamanho_eu_buf).unwrap();
+    conexao_receber.read_exact(&mut tamanho_eu_buf).unwrap();
     let mut eu_buf = vec![0; u16::from_be_bytes(tamanho_eu_buf) as usize];
-    conexao_receber.read(&mut eu_buf).unwrap();
+    conexao_receber.read_exact(&mut eu_buf).unwrap();
     let eu = serde_json::from_str(&String::from_utf8(eu_buf).unwrap()).unwrap();
 
     (Self {conexao_enviar, conexao_receber}, eu)
