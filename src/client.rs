@@ -12,30 +12,13 @@ pub fn run(meu_nome: String) {
     let ip_servidor: std::net::IpAddr = utilities::input("IP da sala a conectar: ").trim().parse().expect("Endereço IP inválido");
     let (mut servidor, eu) = Servidor::new(ip_servidor, meu_nome);
 
-
-    let (mensagem_tx, receber_mensagem) = mpsc::channel();
-    let _receber_mensagens = thread::spawn(move || loop {
-        let mut read_buffer = String::new();
-        let mut buf_reader = BufReader::new(&servidor.conexao_receber);
-        let amount = buf_reader
-            .read_line(&mut read_buffer)
-            .expect("Alguma coisa");
-        if amount == 0 {
-            unsafe { SERVER_EXITED.store(true, std::sync::atomic::Ordering::Relaxed) };
-            return;
-        }
-        read_buffer.pop();
-        let msg = serde_json::from_str(&read_buffer).unwrap();
-        mensagem_tx
-            .send(msg)
-            .expect("Comunicacao entre threads nao funciona");
-        read_buffer.clear();
-    });
+    
 
     println!("Conectado com sucesso!\n");
 
     let mut chat_window = ChatWindow::new(None);
     let mut message = None;
+    let mut read_buffer = vec![0;2usize.pow(20)];
     loop {
         match chat_window.draw() {
             TerminalMessage::Tick => (),
@@ -43,9 +26,16 @@ pub fn run(meu_nome: String) {
             TerminalMessage::SendMessage(msg) => message = Some(msg),
             TerminalMessage::Command(command) => ()
         }
-        if *unsafe { SERVER_EXITED.get_mut() } == true {
+        
+        if let Ok(amount) = servidor.conexao.read(&mut read_buffer) {
+        if amount == 0 {
             println!("{}", "Server disconnected! Exiting...".fg(Color::Red));
             break;
+        }
+        let message_size = u32::from_be_bytes(unsafe {*((read_buffer[0..4].as_ptr()) as *const [u8;4])}) as usize;
+        let texto = String::from_utf8(read_buffer[4..message_size+4].to_vec()).unwrap();
+        let msg = serde_json::from_str(&texto).unwrap();
+        chat_window.receive_message(msg);
         }
         if let Some(ref msg) = message {
             chat_window.receive_message(Message::new(
@@ -53,51 +43,43 @@ pub fn run(meu_nome: String) {
                 utilities::TipoMensagem::Chat(msg.clone()),
             ));
             let message_bytes = msg.as_bytes();
-            servidor.conexao_enviar
+            servidor.conexao
                 .write_all(&[&(message_bytes.len() as u32).to_be_bytes(), message_bytes].concat())
                 .expect("Não consegui mandar sua mensagem");
         }
 
-        while let Ok(msg) = receber_mensagem.try_recv() {
-            chat_window.receive_message(msg);
-        }
         message = None;
     }
 }
 
 
 struct Servidor {
-    conexao_enviar: TcpStream,
-    conexao_receber: TcpStream
+    conexao: TcpStream,
+
 }
 impl Servidor {
 fn new(ip: IpAddr, meu_nome: String) -> (Self, Pessoa)  
 {
     let conectar = SocketAddr::new(ip, 7878);
-    let mut conexao_enviar =
+    let mut conexao =
         TcpStream::connect(conectar).expect("Não foi possível conectar ao servidor");
 
-    conexao_enviar
+    conexao
         .write_all(meu_nome.as_bytes())
         .expect("Não foi possível enviar o nome de usuário ao servidor");
 
-    let mut buffer: [u8; 2] = [0; 2];
-    conexao_enviar
-        .read_exact(&mut buffer)
-        .expect("Servidor não mandou número da porta a conectar");
-    let port = u16::from_be_bytes(buffer);
-    conexao_enviar.set_nodelay(true).unwrap();
-    conexao_enviar.set_nonblocking(true).unwrap();
 
-    let mut conexao_receber = TcpStream::connect(SocketAddr::new(ip, port)).unwrap();
+
+    
 
     let mut tamanho_eu_buf = [0; 2];
-    conexao_receber.read_exact(&mut tamanho_eu_buf).unwrap();
+    conexao.read_exact(&mut tamanho_eu_buf).unwrap();
     let mut eu_buf = vec![0; u16::from_be_bytes(tamanho_eu_buf) as usize];
-    conexao_receber.read_exact(&mut eu_buf).unwrap();
+    conexao.read_exact(&mut eu_buf).unwrap();
     let eu = serde_json::from_str(&String::from_utf8(eu_buf).unwrap()).unwrap();
-
-    (Self {conexao_enviar, conexao_receber}, eu)
+    conexao.set_nodelay(true).unwrap();
+    conexao.set_nonblocking(true).unwrap();
+    (Self {conexao}, eu)
 }
 
 }

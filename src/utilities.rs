@@ -146,6 +146,13 @@ impl std::fmt::Display for Message {
     }
 }
 
-pub fn send_message(stream: TcpStream, msg: &[u8]) {
-    
+pub fn send_message(stream: &mut  TcpStream, msg: &[u8]) {
+    stream.write_all(&[&(msg.len() as u32).to_be_bytes(), msg].concat()).unwrap();
+}
+static mut READ_BUFFER: Vec<u8> = vec![0;1024*1024];
+pub fn read_message(stream: &mut TcpStream) -> String {
+    let message_size = u32::from_be_bytes(unsafe {*((READ_BUFFER[0..4].as_ptr()) as *const [u8;4])}) as usize;
+    let texto = String::from_utf8(unsafe{READ_BUFFER[4..message_size+4]}.to_vec()).unwrap();
+
+    texto
 }
